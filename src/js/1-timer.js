@@ -5,13 +5,28 @@ import iziToast from 'izitoast';
 import 'izitoast/dist/css/iziToast.min.css';
 
 const input = document.querySelector('#datetime-picker');
+const btnStart = document.querySelector('.timer-btn');
+const timer = document.querySelector('.timer');
+let userSelectedDate = null;
+
 const options = {
   enableTime: true,
   time_24hr: true,
   defaultDate: new Date(),
   minuteIncrement: 1,
   onClose(selectedDates) {
-    console.log(selectedDates[0]);
+    if (selectedDates[0].getTime() <= Date.now()) {
+      iziToast.error({
+        message: 'Please choose a date in the future',
+        position: 'topRight',
+      });
+      btnStart.setAttribute('disabled', true);
+      return;
+    }
+    btnStart.removeAttribute('disabled');
+
+    userSelectedDate = selectedDates[0];
+    console.log(userSelectedDate);
   },
 };
 flatpickr(input, options);
@@ -24,17 +39,43 @@ function convertMs(ms) {
   const day = hour * 24;
 
   // Remaining days
-  const days = Math.floor(ms / day);
+  const days = String(Math.floor(ms / day)).padStart(2, '0');
   // Remaining hours
-  const hours = Math.floor((ms % day) / hour);
+  const hours = String(Math.floor((ms % day) / hour)).padStart(2, '0');
   // Remaining minutes
-  const minutes = Math.floor(((ms % day) % hour) / minute);
+  const minutes = String(Math.floor(((ms % day) % hour) / minute)).padStart(
+    2,
+    '0'
+  );
   // Remaining seconds
-  const seconds = Math.floor((((ms % day) % hour) % minute) / second);
+  const seconds = String(
+    Math.floor((((ms % day) % hour) % minute) / second)
+  ).padStart(2, '0');
 
   return { days, hours, minutes, seconds };
 }
 
-console.log(convertMs(2000)); // {days: 0, hours: 0, minutes: 0, seconds: 2}
-console.log(convertMs(140000)); // {days: 0, hours: 0, minutes: 2, seconds: 20}
-console.log(convertMs(24140000)); // {days: 0, hours: 6 minutes: 42, seconds: 20}
+btnStart.addEventListener('click', () => {
+  btnStart.setAttribute('disabled', true);
+  input.setAttribute('disabled', true);
+  const timeCounter = setInterval(() => {
+    const now = Date.now();
+    const deltaTime = userSelectedDate - now;
+    if (deltaTime <= 0) {
+      clearInterval(timeCounter);
+      timer.innerHTML = `
+        <div class="field"><span class="value">00</span><span class="label">Days</span></div>
+        <div class="field"><span class="value">00</span><span class="label">Hours</span></div>
+        <div class="field"><span class="value">00</span><span class="label">Minutes</span></div>
+        <div class="field"><span class="value">00</span><span class="label">Seconds</span></div>`;
+      input.removeAttribute('disabled');
+      return;
+    }
+    const { days, hours, minutes, seconds } = convertMs(deltaTime);
+    timer.innerHTML = `
+      <div class="field"><span class="value">${days}</span><span class="label">Days</span></div>
+      <div class="field"><span class="value">${hours}</span><span class="label">Hours</span></div>
+      <div class="field"><span class="value">${minutes}</span><span class="label">Minutes</span></div>
+      <div class="field"><span class="value">${seconds}</span><span class="label">Seconds</span></div>`;
+  }, 1000);
+});
